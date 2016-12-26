@@ -21,22 +21,12 @@
 #ifndef PHP_LIBRESSL_H
 #define PHP_LIBRESSL_H
 
+#include <php.h>
+
 extern zend_module_entry libressl_module_entry;
 #define phpext_libressl_ptr &libressl_module_entry
 
 #define PHP_LIBRESSL_VERSION "0.1.0" /* Replace with version number for your extension */
-
-#ifdef PHP_WIN32
-#	define PHP_LIBRESSL_API __declspec(dllexport)
-#elif defined(__GNUC__) && __GNUC__ >= 4
-#	define PHP_LIBRESSL_API __attribute__ ((visibility("default")))
-#else
-#	define PHP_LIBRESSL_API
-#endif
-
-#ifdef ZTS
-#include "TSRM.h"
-#endif
 
 /*
   	Declare any global variables you may need between the BEGIN
