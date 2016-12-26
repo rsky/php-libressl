@@ -56,6 +56,9 @@ int php_libressl_crypto_shutdown(SHUTDOWN_FUNC_ARGS);
 int php_libressl_crypto_activate(INIT_FUNC_ARGS);
 int php_libressl_crypto_deactivate(SHUTDOWN_FUNC_ARGS);
 
+PHP_FUNCTION(libressl_encrypt);
+PHP_FUNCTION(libressl_decrypt);
+
 #if defined(ZTS) && defined(COMPILE_DL_LIBRESSL)
 ZEND_TSRMLS_CACHE_EXTERN()
 #endif

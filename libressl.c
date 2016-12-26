@@ -34,6 +34,35 @@ ZEND_DECLARE_MODULE_GLOBALS(libressl)
 /* True global resources - no need for thread safety here */
 static int le_libressl;
 
+/* {{{ Argument Information */
+
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_libressl_encrypt, 0, 0, 4)
+        ZEND_ARG_INFO(0, in)
+        ZEND_ARG_INFO(0, out)
+        ZEND_ARG_INFO(0, method)
+        ZEND_ARG_INFO(0, password)
+        ZEND_ARG_INFO(0, options)
+        ZEND_ARG_INFO(0, iv)
+        ZEND_ARG_INFO(1, tag)
+        ZEND_ARG_INFO(0, aad)
+        ZEND_ARG_INFO(0, tag_length)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_libressl_decrypt, 0, 0, 4)
+        ZEND_ARG_INFO(0, in) 
+        ZEND_ARG_INFO(0, out)
+        ZEND_ARG_INFO(0, method)
+        ZEND_ARG_INFO(0, password)
+        ZEND_ARG_INFO(0, options)
+        ZEND_ARG_INFO(0, iv)
+        ZEND_ARG_INFO(0, tag)
+        ZEND_ARG_INFO(0, aad)
+ZEND_END_ARG_INFO()
+
+
+/* }}} */
+
 /* {{{ PHP_INI
  */
 /* Remove comments and fill if you need to have entries in php.ini
@@ -171,6 +200,8 @@ PHP_MINFO_FUNCTION(libressl)
  */
 const zend_function_entry libressl_functions[] = {
 	PHP_FE(confirm_libressl_compiled,	NULL)		/* For testing, remove later. */
+	PHP_FE(libressl_encrypt, arginfo_libressl_encrypt)
+	PHP_FE(libressl_decrypt, arginfo_libressl_decrypt)
 	PHP_FE_END	/* Must be the last line in libressl_functions[] */
 };
 /* }}} */

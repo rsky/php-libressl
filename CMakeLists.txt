@@ -13,9 +13,9 @@ include_directories(${LIBRESSL_INCLUDE_DIRECTORY}
         ${PHP_INCLUDE_DIRECTORY}/php/main)
 
 set(SOURCE_FILES
-        php_libressl.h
         libressl.c
         crypto.c
-        tls.c)
+        tls.c
+        php_src_openssl.c)
 
 add_executable(ext_libretls ${SOURCE_FILES})

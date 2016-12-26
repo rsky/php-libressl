@@ -57,6 +57,6 @@ if test "$PHP_LIBRESSL" != "no"; then
 
   PHP_SUBST(LIBRESSL_SHARED_LIBADD)
 
-  PHP_NEW_EXTENSION(libressl, libressl.c tls.c crypto.c, $ext_shared,,
+  PHP_NEW_EXTENSION(libressl, libressl.c tls.c crypto.c php_src_openssl.c, $ext_shared,,
                     -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
 fi
