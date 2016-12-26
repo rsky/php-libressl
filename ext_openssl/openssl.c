@@ -24,7 +24,7 @@
 /* $Id$ */
 
 #include "php_libressl.h"
-#include "php_src_openssl.h"
+#include "ext_openssl/openssl.h"
 
 /* {{{ php_openssl_store_errors */
 void php_openssl_store_errors()

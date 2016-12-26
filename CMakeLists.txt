@@ -16,6 +16,6 @@ set(SOURCE_FILES
         libressl.c
         crypto.c
         tls.c
-        php_src_openssl.c)
+        ext_openssl/openssl.c)
 
 add_executable(ext_libretls ${SOURCE_FILES})

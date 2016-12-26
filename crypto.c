@@ -29,7 +29,7 @@
 #endif
 
 #include "php_libressl.h"
-#include "php_src_openssl.h"
+#include "ext_openssl/openssl.h"
 #include <Zend/zend_smart_str.h>
 
 /* {{{ proto bool libressl_encrypt(stream in, stream out, string method, string password [, long
