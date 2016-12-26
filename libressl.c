@@ -22,9 +22,9 @@
 #include "config.h"
 #endif
 
-#include "php.h"
-#include "php_ini.h"
-#include "ext/standard/info.h"
+#include <php.h>
+#include <php_ini.h>
+#include <ext/standard/info.h>
 #include "php_libressl.h"
 
 /* If you declare any globals in php_libressl.h uncomment this:
@@ -91,6 +91,12 @@ PHP_MINIT_FUNCTION(libressl)
 	/* If you have INI entries, uncomment these lines
 	REGISTER_INI_ENTRIES();
 	*/
+	if (php_libressl_tls_startup(INIT_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+		return FAILURE;
+	}
+	if (php_libressl_crypto_startup(INIT_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+		return FAILURE;
+	}
 	return SUCCESS;
 }
 /* }}} */
@@ -102,6 +108,12 @@ PHP_MSHUTDOWN_FUNCTION(libressl)
 	/* uncomment this line if you have INI entries
 	UNREGISTER_INI_ENTRIES();
 	*/
+	if (php_libressl_crypto_shutdown(SHUTDOWN_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+		return FAILURE;
+	}
+	if (php_libressl_tls_shutdown(SHUTDOWN_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+		return FAILURE;
+	}
 	return SUCCESS;
 }
 /* }}} */
@@ -114,6 +126,12 @@ PHP_RINIT_FUNCTION(libressl)
 #if defined(COMPILE_DL_LIBRESSL) && defined(ZTS)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
+	if (php_libressl_tls_activate(INIT_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+		return FAILURE;
+	}
+	if (php_libressl_crypto_activate(INIT_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+		return FAILURE;
+	}
 	return SUCCESS;
 }
 /* }}} */
@@ -123,6 +141,12 @@ PHP_RINIT_FUNCTION(libressl)
  */
 PHP_RSHUTDOWN_FUNCTION(libressl)
 {
+	if (php_libressl_crypto_deactivate(SHUTDOWN_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+		return FAILURE;
+	}
+	if (php_libressl_tls_deactivate(SHUTDOWN_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+		return FAILURE;
+	}
 	return SUCCESS;
 }
 /* }}} */
@@ -159,8 +183,8 @@ zend_module_entry libressl_module_entry = {
 	libressl_functions,
 	PHP_MINIT(libressl),
 	PHP_MSHUTDOWN(libressl),
-	PHP_RINIT(libressl),		/* Replace with NULL if there's nothing to do at request start */
-	PHP_RSHUTDOWN(libressl),	/* Replace with NULL if there's nothing to do at request end */
+	PHP_RINIT(libressl),
+	PHP_RSHUTDOWN(libressl),
 	PHP_MINFO(libressl),
 	PHP_LIBRESSL_VERSION,
 	STANDARD_MODULE_PROPERTIES

@@ -44,6 +44,18 @@ ZEND_END_MODULE_GLOBALS(libressl)
 */
 #define LIBRESSL_G(v) ZEND_MODULE_GLOBALS_ACCESSOR(libressl, v)
 
+/* libtls functions */
+int php_libressl_tls_startup(INIT_FUNC_ARGS);
+int php_libressl_tls_shutdown(SHUTDOWN_FUNC_ARGS);
+int php_libressl_tls_activate(INIT_FUNC_ARGS);
+int php_libressl_tls_deactivate(SHUTDOWN_FUNC_ARGS);
+
+/* libcrypto functions */
+int php_libressl_crypto_startup(INIT_FUNC_ARGS);
+int php_libressl_crypto_shutdown(SHUTDOWN_FUNC_ARGS);
+int php_libressl_crypto_activate(INIT_FUNC_ARGS);
+int php_libressl_crypto_deactivate(SHUTDOWN_FUNC_ARGS);
+
 #if defined(ZTS) && defined(COMPILE_DL_LIBRESSL)
 ZEND_TSRMLS_CACHE_EXTERN()
 #endif
