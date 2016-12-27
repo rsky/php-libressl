@@ -13,10 +13,106 @@ static zend_object_handlers tls_config_object_handlers;
 
 /* }}} */
 
+/* {{{ Object Handler Prototypes */
+
+static void php_tls_object_free_storage(zend_object *object);
+static void php_tls_config_object_free_storage(zend_object *object);
+
+static zend_object *php_tls_object_create(zend_class_entry *class_type);
+static zend_object *php_tls_config_object_create(zend_class_entry *class_type);
+
+/* }}} */
+
+/* {{{ tls_config Method Prototypes */
+
+static PHP_METHOD(TLSConfig, setCaFile);
+static PHP_METHOD(TLSConfig, setCaPath);
+static PHP_METHOD(TLSConfig, setCa);
+
+static PHP_METHOD(TLSConfig, setCertFile);
+static PHP_METHOD(TLSConfig, setCert);
+
+static PHP_METHOD(TLSConfig, setCiphers);
+static PHP_METHOD(TLSConfig, setDheparams);
+static PHP_METHOD(TLSConfig, setEcdhecurve);
+
+static PHP_METHOD(TLSConfig, setKeyFile);
+static PHP_METHOD(TLSConfig, setKey);
+
+static PHP_METHOD(TLSConfig, setKeypairFile);
+static PHP_METHOD(TLSConfig, setKeypair);
+
+static PHP_METHOD(TLSConfig, setProtocols);
+static PHP_METHOD(TLSConfig, setVerifyDepth);
+
+static PHP_METHOD(TLSConfig, preferCiphersClient);
+static PHP_METHOD(TLSConfig, preferCiphersServer);
+
+static PHP_METHOD(TLSConfig, insecureNoverifycert);
+static PHP_METHOD(TLSConfig, insecureNoverifyname);
+static PHP_METHOD(TLSConfig, insecureNoverifytime);
+static PHP_METHOD(TLSConfig, verify);
+
+static PHP_METHOD(TLSConfig, verifyClient);
+static PHP_METHOD(TLSConfig, verifyClientOptional);
+
+static PHP_METHOD(TLSConfig, clearKeys);
+static PHP_METHOD(TLSConfig, parseProtocols);
+
+static void php_tls_config_file_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name,
+                                       int(*callback)(struct tls_config *, const char *));
+static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name,
+                                       int(*callback)(struct tls_config *, const char *));
+static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name,
+                                      int(*callback)(struct tls_config *, const uint8_t *, size_t));
+static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name,
+                                      int(*callback)(struct tls_config *, const char *));
+static void php_tls_config_void_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name,
+                                       void(*callback)(struct tls_config *));
+
+/* }}} */
+
+/* {{{ Argument Information */
+
+#define TLS_CONFIG_SINGLE_TYPED_ARG_INFO(name, type) \
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_##name, 0, 0, 1) \
+ZEND_ARG_TYPE_INFO(0, name, type, 0) \
+ZEND_END_ARG_INFO()
+#define TLS_CONFIG_SINGLE_STRING_ARG_INFO(name) TLS_CONFIG_SINGLE_TYPED_ARG_INFO(name, IS_STRING)
+#define TLS_CONFIG_SINGLE_LONG_ARG_INFO(name) TLS_CONFIG_SINGLE_TYPED_ARG_INFO(name, IS_LONG)
+
+TLS_CONFIG_SINGLE_STRING_ARG_INFO(file)
+TLS_CONFIG_SINGLE_STRING_ARG_INFO(path)
+TLS_CONFIG_SINGLE_STRING_ARG_INFO(ca)
+TLS_CONFIG_SINGLE_STRING_ARG_INFO(cert)
+TLS_CONFIG_SINGLE_STRING_ARG_INFO(ciphers)
+TLS_CONFIG_SINGLE_STRING_ARG_INFO(params)
+TLS_CONFIG_SINGLE_STRING_ARG_INFO(name)
+TLS_CONFIG_SINGLE_STRING_ARG_INFO(key)
+TLS_CONFIG_SINGLE_LONG_ARG_INFO(protocols)
+TLS_CONFIG_SINGLE_LONG_ARG_INFO(verify_depth)
+TLS_CONFIG_SINGLE_STRING_ARG_INFO(protostr)
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_keypair_file, 0, 0, 2)
+ZEND_ARG_TYPE_INFO(0, cert_file, IS_STRING, 0)
+ZEND_ARG_TYPE_INFO(0, ca_file, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_keypair, 0, 0, 2)
+ZEND_ARG_TYPE_INFO(0, cert, IS_STRING, 0)
+ZEND_ARG_TYPE_INFO(0, ca, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_void, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+
+/* }}} */
+
 /* {{{ Function Tables */
 
 static zend_function_entry tls_base_methods[] = {
-        PHP_FE_END
+       PHP_FE_END
 };
 
 static zend_function_entry tls_client_methods[] = {
@@ -28,18 +124,32 @@ static zend_function_entry tls_server_methods[] = {
 };
 
 static zend_function_entry tls_config_methods[] = {
+        PHP_ME(TLSConfig, setCaFile,            arginfo_tls_config_file, 0)
+        PHP_ME(TLSConfig, setCaPath,            arginfo_tls_config_path, 0)
+        PHP_ME(TLSConfig, setCa,                arginfo_tls_config_ca, 0)
+        PHP_ME(TLSConfig, setCertFile,          arginfo_tls_config_file, 0)
+        PHP_ME(TLSConfig, setCert,              arginfo_tls_config_cert, 0)
+        PHP_ME(TLSConfig, setCiphers,           arginfo_tls_config_ciphers, 0)
+        PHP_ME(TLSConfig, setDheparams,         arginfo_tls_config_params, 0)
+        PHP_ME(TLSConfig, setEcdhecurve,        arginfo_tls_config_name, 0)
+        PHP_ME(TLSConfig, setKeyFile,           arginfo_tls_config_file, 0)
+        PHP_ME(TLSConfig, setKey,               arginfo_tls_config_key, 0)
+        PHP_ME(TLSConfig, setKeypairFile,       arginfo_tls_config_keypair_file, 0)
+        PHP_ME(TLSConfig, setKeypair,           arginfo_tls_config_keypair, 0)
+        PHP_ME(TLSConfig, setProtocols,         arginfo_tls_config_protocols, 0)
+        PHP_ME(TLSConfig, setVerifyDepth,       arginfo_tls_config_verify_depth, 0)
+        PHP_ME(TLSConfig, preferCiphersClient,  arginfo_tls_config_void, 0)
+        PHP_ME(TLSConfig, preferCiphersServer,  arginfo_tls_config_void, 0)
+        PHP_ME(TLSConfig, insecureNoverifycert, arginfo_tls_config_void, 0)
+        PHP_ME(TLSConfig, insecureNoverifyname, arginfo_tls_config_void, 0)
+        PHP_ME(TLSConfig, insecureNoverifytime, arginfo_tls_config_void, 0)
+        PHP_ME(TLSConfig, verify,               arginfo_tls_config_void, 0)
+        PHP_ME(TLSConfig, verifyClient,         arginfo_tls_config_void, 0)
+        PHP_ME(TLSConfig, verifyClientOptional, arginfo_tls_config_void, 0)
+        PHP_ME(TLSConfig, clearKeys,            arginfo_tls_config_void, 0)
+        PHP_ME(TLSConfig, parseProtocols,       arginfo_tls_config_protostr, 0)
         PHP_FE_END
 };
-
-/* }}} */
-
-/* {{{ Object Handlers */
-
-static void php_tls_object_free_storage(zend_object *object);
-static void php_tls_config_object_free_storage(zend_object *object);
-
-static zend_object *php_tls_object_create(zend_class_entry *class_type);
-static zend_object *php_tls_config_object_create(zend_class_entry *class_type);
 
 /* }}} */
 
@@ -163,6 +273,223 @@ static zend_object *php_tls_config_object_create(zend_class_entry *class_type) /
     intern->config = tls_config_new();
 
     return &intern->std;
+}
+/* }}} */
+
+static void php_tls_config_file_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name, int(*callback)(struct tls_config *, const char *)) /* {{{ */
+{
+
+}
+/* }}} */
+
+static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name, int(*callback)(struct tls_config *, const char *)) /* {{{ */
+{
+
+}
+/* }}} */
+
+static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name, int(*callback)(struct tls_config *, const uint8_t *, size_t)) /* {{{ */
+{
+
+}
+/* }}} */
+
+static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name, int(*callback)(struct tls_config *, const char *)) /* {{{ */
+{
+
+}
+/* }}} */
+
+static void php_tls_config_void_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name, void(*callback)(struct tls_config *)) /* {{{ */
+{
+
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setCaFile(string file)
+ */
+static PHP_METHOD(TLSConfig, setCaFile)
+{
+    php_tls_config_file_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "ca_file", tls_config_set_ca_file);
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setCaPath(string path)
+ */
+static PHP_METHOD(TLSConfig, setCaPath)
+{
+    php_tls_config_path_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "ca_path", tls_config_set_ca_path);
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setCa(string ca)
+ */
+static PHP_METHOD(TLSConfig, setCa)
+{
+    php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "ca", tls_config_set_ca_mem);
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setCertFile(string file)
+ */
+static PHP_METHOD(TLSConfig, setCertFile)
+{
+    php_tls_config_file_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "cert_file", tls_config_set_cert_file);
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setCert(string cert)
+ */
+static PHP_METHOD(TLSConfig, setCert)
+{
+    php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "cert", tls_config_set_cert_mem);
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setCiphers(string ciphers)
+ */
+static PHP_METHOD(TLSConfig, setCiphers)
+{
+    php_tls_config_str_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "ciphers", tls_config_set_ciphers);
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setDheparams(string params)
+ */
+static PHP_METHOD(TLSConfig, setDheparams)
+{
+    php_tls_config_str_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "dheparams", tls_config_set_dheparams);
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setEcdhecurve(string name)
+ */
+static PHP_METHOD(TLSConfig, setEcdhecurve)
+{
+    php_tls_config_str_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "ecdhecurve", tls_config_set_ecdhecurve);
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setKeyFile(string file)
+ */
+static PHP_METHOD(TLSConfig, setKeyFile)
+{
+    php_tls_config_file_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "key_file", tls_config_set_key_file);
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setKey(string key)
+ */
+static PHP_METHOD(TLSConfig, setKey)
+{
+    php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "key", tls_config_set_key_mem);
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setKeypairFile(String cert_file, String key_file)
+ */
+static PHP_METHOD(TLSConfig, setKeypairFile)
+{
+}
+/* }}} */
+
+/* {{{ proto bool TLS\Config::setKeypair(string cert, string key)
+ */
+static PHP_METHOD(TLSConfig, setKeypair)
+{
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::setProtocols(int protocols)
+ */
+static PHP_METHOD(TLSConfig, setProtocols)
+{
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::setVerifyDepth(int verify_depth)
+ */
+static PHP_METHOD(TLSConfig, setVerifyDepth)
+{
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::preferCiphersClient()
+ */
+static PHP_METHOD(TLSConfig, preferCiphersClient)
+{
+    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "prefer_ciphers_client", tls_config_prefer_ciphers_client);
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::preferCiphersServer()
+ */
+static PHP_METHOD(TLSConfig, preferCiphersServer)
+{
+    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "prefer_ciphers_server", tls_config_prefer_ciphers_server);
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::insecureNoverifycert()
+ */
+static PHP_METHOD(TLSConfig, insecureNoverifycert)
+{
+    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "insecure_noverifycert", tls_config_insecure_noverifycert);
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::insecureNoverifyname()
+ */
+static PHP_METHOD(TLSConfig, insecureNoverifyname)
+{
+    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "insecure_noverifyname", tls_config_insecure_noverifyname);
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::insecureNoverifytime()
+ */
+static PHP_METHOD(TLSConfig, insecureNoverifytime)
+{
+    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "insecure_noverifytime", tls_config_insecure_noverifytime);
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::verify()
+ */
+static PHP_METHOD(TLSConfig, verify)
+{
+    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "verify", tls_config_verify);
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::verifyClient()
+ */
+static PHP_METHOD(TLSConfig, verifyClient)
+{
+    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "verify_client", tls_config_verify_client);
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::verifyClientOptional()
+ */
+static PHP_METHOD(TLSConfig, verifyClientOptional)
+{
+    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "verify_client_optional", tls_config_verify_client_optional);
+}
+/* }}} */
+
+/* {{{ proto void TLS\Config::clearKeys()
+ */
+static PHP_METHOD(TLSConfig, clearKeys)
+{
+    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, NULL, tls_config_clear_keys);
+}
+/* }}} */
+
+/* {{{ proto int TLS\Config::parseProtocols(string protostr)
+ */
+static PHP_METHOD(TLSConfig, parseProtocols)
+{
 }
 /* }}} */
 
