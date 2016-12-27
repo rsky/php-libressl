@@ -268,11 +268,17 @@ PHP_FUNCTION(libressl_decrypt)
 
 int php_libressl_crypto_startup(INIT_FUNC_ARGS)
 {
+    OpenSSL_add_all_ciphers();
+    OpenSSL_add_all_digests();
+    OpenSSL_add_all_algorithms();
+
     return SUCCESS;
 }
 
 int php_libressl_crypto_shutdown(SHUTDOWN_FUNC_ARGS)
 {
+    EVP_cleanup();
+
     return SUCCESS;
 }
 
