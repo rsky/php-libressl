@@ -59,16 +59,10 @@ static PHP_METHOD(TLSConfig, verifyClientOptional);
 static PHP_METHOD(TLSConfig, clearKeys);
 static PHP_METHOD(TLSConfig, parseProtocols);
 
-static void php_tls_config_file_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name,
-                                       int(*callback)(struct tls_config *, const char *));
-static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name,
-                                       int(*callback)(struct tls_config *, const char *));
-static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name,
-                                      int(*callback)(struct tls_config *, const uint8_t *, size_t));
-static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name,
-                                      int(*callback)(struct tls_config *, const char *));
-static void php_tls_config_void_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name,
-                                       void(*callback)(struct tls_config *));
+static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, int(*callback)(struct tls_config *, const char *));
+static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, int(*callback)(struct tls_config *, const uint8_t *, size_t));
+static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, int(*callback)(struct tls_config *, const char *));
+static void php_tls_config_void_func(INTERNAL_FUNCTION_PARAMETERS, void(*callback)(struct tls_config *));
 
 /* }}} */
 
@@ -95,15 +89,15 @@ TLS_CONFIG_SINGLE_STRING_ARG_INFO(protostr)
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_keypair_file, 0, 0, 2)
 ZEND_ARG_TYPE_INFO(0, cert_file, IS_STRING, 0)
-ZEND_ARG_TYPE_INFO(0, ca_file, IS_STRING, 0)
+ZEND_ARG_TYPE_INFO(0, ca_file,   IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_keypair, 0, 0, 2)
 ZEND_ARG_TYPE_INFO(0, cert, IS_STRING, 0)
-ZEND_ARG_TYPE_INFO(0, ca, IS_STRING, 0)
+ZEND_ARG_TYPE_INFO(0, ca,   IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_void, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_none, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 
@@ -138,16 +132,16 @@ static zend_function_entry tls_config_methods[] = {
         PHP_ME(TLSConfig, setKeypair,           arginfo_tls_config_keypair, 0)
         PHP_ME(TLSConfig, setProtocols,         arginfo_tls_config_protocols, 0)
         PHP_ME(TLSConfig, setVerifyDepth,       arginfo_tls_config_verify_depth, 0)
-        PHP_ME(TLSConfig, preferCiphersClient,  arginfo_tls_config_void, 0)
-        PHP_ME(TLSConfig, preferCiphersServer,  arginfo_tls_config_void, 0)
-        PHP_ME(TLSConfig, insecureNoverifycert, arginfo_tls_config_void, 0)
-        PHP_ME(TLSConfig, insecureNoverifyname, arginfo_tls_config_void, 0)
-        PHP_ME(TLSConfig, insecureNoverifytime, arginfo_tls_config_void, 0)
-        PHP_ME(TLSConfig, verify,               arginfo_tls_config_void, 0)
-        PHP_ME(TLSConfig, verifyClient,         arginfo_tls_config_void, 0)
-        PHP_ME(TLSConfig, verifyClientOptional, arginfo_tls_config_void, 0)
-        PHP_ME(TLSConfig, clearKeys,            arginfo_tls_config_void, 0)
-        PHP_ME(TLSConfig, parseProtocols,       arginfo_tls_config_protostr, 0)
+        PHP_ME(TLSConfig, preferCiphersClient,  arginfo_tls_config_none, 0)
+        PHP_ME(TLSConfig, preferCiphersServer,  arginfo_tls_config_none, 0)
+        PHP_ME(TLSConfig, insecureNoverifycert, arginfo_tls_config_none, 0)
+        PHP_ME(TLSConfig, insecureNoverifyname, arginfo_tls_config_none, 0)
+        PHP_ME(TLSConfig, insecureNoverifytime, arginfo_tls_config_none, 0)
+        PHP_ME(TLSConfig, verify,               arginfo_tls_config_none, 0)
+        PHP_ME(TLSConfig, verifyClient,         arginfo_tls_config_none, 0)
+        PHP_ME(TLSConfig, verifyClientOptional, arginfo_tls_config_none, 0)
+        PHP_ME(TLSConfig, clearKeys,            arginfo_tls_config_none, 0)
+        PHP_ME(TLSConfig, parseProtocols,       arginfo_tls_config_protostr, ZEND_ACC_STATIC)
         PHP_FE_END
 };
 
@@ -276,33 +270,60 @@ static zend_object *php_tls_config_object_create(zend_class_entry *class_type) /
 }
 /* }}} */
 
-static void php_tls_config_file_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name, int(*callback)(struct tls_config *, const char *)) /* {{{ */
+static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, int(*callback)(struct tls_config *, const char *)) /* {{{ */
 {
+    zval *self = getThis();
+    php_tls_config_obj *intern;
+    intern = php_tls_config_obj_from_obj(Z_OBJ_P(self));
 
+    zend_string *str = NULL;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_PATH_STR(str)
+    ZEND_PARSE_PARAMETERS_END();
+
+    RETVAL_BOOL(callback(intern->config, ZSTR_VAL(str)) == 0);
 }
 /* }}} */
 
-static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name, int(*callback)(struct tls_config *, const char *)) /* {{{ */
+static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, int(*callback)(struct tls_config *, const uint8_t *, size_t)) /* {{{ */
 {
+    zval *self = getThis();
+    php_tls_config_obj *intern;
+    intern = php_tls_config_obj_from_obj(Z_OBJ_P(self));
 
+    zend_string *str = NULL;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_STR(str)
+    ZEND_PARSE_PARAMETERS_END();
+
+    RETVAL_BOOL(callback(intern->config, (const uint8_t *) ZSTR_VAL(str), ZSTR_LEN(str)) == 0);
 }
 /* }}} */
 
-static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name, int(*callback)(struct tls_config *, const uint8_t *, size_t)) /* {{{ */
+static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, int(*callback)(struct tls_config *, const char *)) /* {{{ */
 {
+    zval *self = getThis();
+    php_tls_config_obj *intern;
+    intern = php_tls_config_obj_from_obj(Z_OBJ_P(self));
 
+    zend_string *str = NULL;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_STR(str)
+    ZEND_PARSE_PARAMETERS_END();
+
+    RETVAL_BOOL(callback(intern->config, ZSTR_VAL(str)) == 0);
 }
 /* }}} */
 
-static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name, int(*callback)(struct tls_config *, const char *)) /* {{{ */
+static void php_tls_config_void_func(INTERNAL_FUNCTION_PARAMETERS, void(*callback)(struct tls_config *)) /* {{{ */
 {
-
-}
-/* }}} */
-
-static void php_tls_config_void_setter(INTERNAL_FUNCTION_PARAMETERS, const char *property_name, void(*callback)(struct tls_config *)) /* {{{ */
-{
-
+    if (zend_parse_parameters_none() == SUCCESS) {
+        php_tls_config_obj *intern = php_tls_config_obj_from_obj(Z_OBJ_P(getThis()));
+        callback(intern->config);
+    }
 }
 /* }}} */
 
@@ -310,7 +331,7 @@ static void php_tls_config_void_setter(INTERNAL_FUNCTION_PARAMETERS, const char 
  */
 static PHP_METHOD(TLSConfig, setCaFile)
 {
-    php_tls_config_file_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "ca_file", tls_config_set_ca_file);
+    php_tls_config_path_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_set_ca_file);
 }
 /* }}} */
 
@@ -318,7 +339,7 @@ static PHP_METHOD(TLSConfig, setCaFile)
  */
 static PHP_METHOD(TLSConfig, setCaPath)
 {
-    php_tls_config_path_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "ca_path", tls_config_set_ca_path);
+    php_tls_config_path_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_set_ca_path);
 }
 /* }}} */
 
@@ -326,7 +347,7 @@ static PHP_METHOD(TLSConfig, setCaPath)
  */
 static PHP_METHOD(TLSConfig, setCa)
 {
-    php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "ca", tls_config_set_ca_mem);
+    php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_set_ca_mem);
 }
 /* }}} */
 
@@ -334,7 +355,7 @@ static PHP_METHOD(TLSConfig, setCa)
  */
 static PHP_METHOD(TLSConfig, setCertFile)
 {
-    php_tls_config_file_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "cert_file", tls_config_set_cert_file);
+    php_tls_config_path_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_set_cert_file);
 }
 /* }}} */
 
@@ -342,7 +363,7 @@ static PHP_METHOD(TLSConfig, setCertFile)
  */
 static PHP_METHOD(TLSConfig, setCert)
 {
-    php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "cert", tls_config_set_cert_mem);
+    php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_set_cert_mem);
 }
 /* }}} */
 
@@ -350,7 +371,7 @@ static PHP_METHOD(TLSConfig, setCert)
  */
 static PHP_METHOD(TLSConfig, setCiphers)
 {
-    php_tls_config_str_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "ciphers", tls_config_set_ciphers);
+    php_tls_config_str_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_set_ciphers);
 }
 /* }}} */
 
@@ -358,7 +379,7 @@ static PHP_METHOD(TLSConfig, setCiphers)
  */
 static PHP_METHOD(TLSConfig, setDheparams)
 {
-    php_tls_config_str_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "dheparams", tls_config_set_dheparams);
+    php_tls_config_str_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_set_dheparams);
 }
 /* }}} */
 
@@ -366,7 +387,7 @@ static PHP_METHOD(TLSConfig, setDheparams)
  */
 static PHP_METHOD(TLSConfig, setEcdhecurve)
 {
-    php_tls_config_str_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "ecdhecurve", tls_config_set_ecdhecurve);
+    php_tls_config_str_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_set_ecdhecurve);
 }
 /* }}} */
 
@@ -374,7 +395,7 @@ static PHP_METHOD(TLSConfig, setEcdhecurve)
  */
 static PHP_METHOD(TLSConfig, setKeyFile)
 {
-    php_tls_config_file_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "key_file", tls_config_set_key_file);
+    php_tls_config_path_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_set_key_file);
 }
 /* }}} */
 
@@ -382,7 +403,7 @@ static PHP_METHOD(TLSConfig, setKeyFile)
  */
 static PHP_METHOD(TLSConfig, setKey)
 {
-    php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "key", tls_config_set_key_mem);
+    php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_set_key_mem);
 }
 /* }}} */
 
@@ -390,6 +411,18 @@ static PHP_METHOD(TLSConfig, setKey)
  */
 static PHP_METHOD(TLSConfig, setKeypairFile)
 {
+    zval *self = getThis();
+    php_tls_config_obj *intern;
+    intern = php_tls_config_obj_from_obj(Z_OBJ_P(self));
+
+    zend_string *cert = NULL, *ca = NULL;
+
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_PATH_STR(cert)
+            Z_PARAM_PATH_STR(ca)
+    ZEND_PARSE_PARAMETERS_END();
+
+    RETURN_BOOL(tls_config_set_keypair_file(intern->config, ZSTR_VAL(cert), ZSTR_VAL(ca)) == 0);
 }
 /* }}} */
 
@@ -397,20 +430,68 @@ static PHP_METHOD(TLSConfig, setKeypairFile)
  */
 static PHP_METHOD(TLSConfig, setKeypair)
 {
+    zval *self = getThis();
+    php_tls_config_obj *intern;
+    intern = php_tls_config_obj_from_obj(Z_OBJ_P(self));
+
+    zend_string *cert = NULL, *ca = NULL;
+
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_STR(cert)
+            Z_PARAM_STR(ca)
+    ZEND_PARSE_PARAMETERS_END();
+
+    RETURN_BOOL(tls_config_set_keypair_mem(intern->config,
+                                           (const uint8_t *) ZSTR_VAL(cert), ZSTR_LEN(cert),
+                                           (const uint8_t *) ZSTR_VAL(ca), ZSTR_LEN(ca)) == 0);
 }
 /* }}} */
 
-/* {{{ proto void TLS\Config::setProtocols(int protocols)
+/* {{{ proto bool TLS\Config::setProtocols(int protocols)
  */
 static PHP_METHOD(TLSConfig, setProtocols)
 {
+    zval *self = getThis();
+    php_tls_config_obj *intern;
+    intern = php_tls_config_obj_from_obj(Z_OBJ_P(self));
+
+    zend_long protocols = 0;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_LONG(protocols)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (ZEND_LONG_UINT_OVFL(protocols)) {
+        php_error_docref(NULL, E_WARNING, "protocols is too long");
+        RETURN_FALSE;
+    } else {
+        tls_config_set_protocols(intern->config, (uint32_t) protocols);
+        RETURN_TRUE;
+    }
 }
 /* }}} */
 
-/* {{{ proto void TLS\Config::setVerifyDepth(int verify_depth)
+/* {{{ proto bool TLS\Config::setVerifyDepth(int verify_depth)
  */
 static PHP_METHOD(TLSConfig, setVerifyDepth)
 {
+    zval *self = getThis();
+    php_tls_config_obj *intern;
+    intern = php_tls_config_obj_from_obj(Z_OBJ_P(self));
+
+    zend_long verify_depth = 0;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_LONG(verify_depth)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (ZEND_LONG_INT_OVFL(verify_depth)) {
+        php_error_docref(NULL, E_WARNING, "verify_depth is too long");
+        RETURN_FALSE;
+    } else {
+        tls_config_set_verify_depth(intern->config, (int) verify_depth);
+        RETURN_TRUE;
+    }
 }
 /* }}} */
 
@@ -418,7 +499,7 @@ static PHP_METHOD(TLSConfig, setVerifyDepth)
  */
 static PHP_METHOD(TLSConfig, preferCiphersClient)
 {
-    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "prefer_ciphers_client", tls_config_prefer_ciphers_client);
+    php_tls_config_void_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_prefer_ciphers_client);
 }
 /* }}} */
 
@@ -426,7 +507,7 @@ static PHP_METHOD(TLSConfig, preferCiphersClient)
  */
 static PHP_METHOD(TLSConfig, preferCiphersServer)
 {
-    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "prefer_ciphers_server", tls_config_prefer_ciphers_server);
+    php_tls_config_void_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_prefer_ciphers_server);
 }
 /* }}} */
 
@@ -434,7 +515,7 @@ static PHP_METHOD(TLSConfig, preferCiphersServer)
  */
 static PHP_METHOD(TLSConfig, insecureNoverifycert)
 {
-    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "insecure_noverifycert", tls_config_insecure_noverifycert);
+    php_tls_config_void_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_insecure_noverifycert);
 }
 /* }}} */
 
@@ -442,7 +523,7 @@ static PHP_METHOD(TLSConfig, insecureNoverifycert)
  */
 static PHP_METHOD(TLSConfig, insecureNoverifyname)
 {
-    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "insecure_noverifyname", tls_config_insecure_noverifyname);
+    php_tls_config_void_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_insecure_noverifyname);
 }
 /* }}} */
 
@@ -450,7 +531,7 @@ static PHP_METHOD(TLSConfig, insecureNoverifyname)
  */
 static PHP_METHOD(TLSConfig, insecureNoverifytime)
 {
-    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "insecure_noverifytime", tls_config_insecure_noverifytime);
+    php_tls_config_void_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_insecure_noverifytime);
 }
 /* }}} */
 
@@ -458,7 +539,7 @@ static PHP_METHOD(TLSConfig, insecureNoverifytime)
  */
 static PHP_METHOD(TLSConfig, verify)
 {
-    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "verify", tls_config_verify);
+    php_tls_config_void_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_verify);
 }
 /* }}} */
 
@@ -466,7 +547,7 @@ static PHP_METHOD(TLSConfig, verify)
  */
 static PHP_METHOD(TLSConfig, verifyClient)
 {
-    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "verify_client", tls_config_verify_client);
+    php_tls_config_void_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_verify_client);
 }
 /* }}} */
 
@@ -474,7 +555,7 @@ static PHP_METHOD(TLSConfig, verifyClient)
  */
 static PHP_METHOD(TLSConfig, verifyClientOptional)
 {
-    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, "verify_client_optional", tls_config_verify_client_optional);
+    php_tls_config_void_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_verify_client_optional);
 }
 /* }}} */
 
@@ -482,7 +563,7 @@ static PHP_METHOD(TLSConfig, verifyClientOptional)
  */
 static PHP_METHOD(TLSConfig, clearKeys)
 {
-    php_tls_config_void_setter(INTERNAL_FUNCTION_PARAM_PASSTHRU, NULL, tls_config_clear_keys);
+    php_tls_config_void_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_config_clear_keys);
 }
 /* }}} */
 
@@ -490,6 +571,18 @@ static PHP_METHOD(TLSConfig, clearKeys)
  */
 static PHP_METHOD(TLSConfig, parseProtocols)
 {
+    zend_string *str = NULL;
+    uint32_t protocols;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_STR(str)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (tls_config_parse_protocols(&protocols, ZSTR_VAL(str)) == 0) {
+        RETURN_LONG(protocols);
+    } else {
+        RETURN_FALSE;
+    }
 }
 /* }}} */
 
