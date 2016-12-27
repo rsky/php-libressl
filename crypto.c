@@ -34,7 +34,7 @@
 
 /* {{{ proto bool libressl_encrypt(stream in, stream out, string method, string password [, long
 options=0 [, string $iv=''[, string &$tag = ''[, string $aad = ''[, long $tag_length = 16]]]]])
-   Encrypts given data with given method and key, returns raw or base64 encoded string */
+   Encrypts given stream into another stream with given method and key */
 PHP_FUNCTION(libressl_encrypt)
 {
     zval *in = NULL, *out = NULL;
@@ -148,9 +148,10 @@ PHP_FUNCTION(libressl_encrypt)
     EVP_CIPHER_CTX_free(cipher_ctx);
 }
 /* }}} */
+
 /* {{{ proto bool libressl_decrypt(stream in, stream out, string method, string password [, long
 options=0 [, string $iv = ''[, string $tag = ''[, string $aad = '']]]])
-   Takes raw or base64 encoded string and decrypts it using given method and key */
+   Takes stream and decrypts it into another stream using given method and key */
 PHP_FUNCTION(libressl_decrypt)
 {
     zval *in = NULL, *out = NULL;
