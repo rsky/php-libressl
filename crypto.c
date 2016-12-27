@@ -37,11 +37,11 @@ options=0 [, string $iv=''[, string &$tag = ''[, string $aad = ''[, long $tag_le
    Encrypts given data with given method and key, returns raw or base64 encoded string */
 PHP_FUNCTION(libressl_encrypt)
 {
-    zval *in, *out;
+    zval *in = NULL, *out = NULL;
     php_stream *in_stream, *out_stream;
     zend_long options = 0, tag_len = 16;
-    char *data, *method, *password, *iv = "", *aad = "";
-    size_t method_len, password_len, iv_len = 0, aad_len = 0;
+    char *method = "", *password = "", *iv = "", *aad = "";
+    size_t method_len = 0, password_len = 0, iv_len = 0, aad_len = 0;
     zval *tag = NULL;
     const EVP_CIPHER *cipher_type;
     EVP_CIPHER_CTX *cipher_ctx;
@@ -50,10 +50,17 @@ PHP_FUNCTION(libressl_encrypt)
     zend_string *outbuf = NULL;
     zend_bool free_iv = 0, free_password = 0;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS(), "rrss|lsz/sl", &in, &out, &method, &method_len,
-                              &password, &password_len, &options, &iv, &iv_len, &tag, &aad, &aad_len, &tag_len) == FAILURE) {
-        return;
-    }
+    ZEND_PARSE_PARAMETERS_START(4, 9)
+            Z_PARAM_RESOURCE(in)
+            Z_PARAM_RESOURCE(out)
+            Z_PARAM_STRING(method, method_len)
+            Z_PARAM_STRING(password, password_len)
+            Z_PARAM_LONG(options)
+            Z_PARAM_STRING(iv, iv_len)
+            Z_PARAM_ZVAL_EX(tag, 0, 1)
+            Z_PARAM_STRING(aad, aad_len)
+            Z_PARAM_LONG(tag_len)
+    ZEND_PARSE_PARAMETERS_END();
 
     php_stream_from_zval(in_stream, in);
     php_stream_from_zval(out_stream, out);
@@ -146,11 +153,11 @@ options=0 [, string $iv = ''[, string $tag = ''[, string $aad = '']]]])
    Takes raw or base64 encoded string and decrypts it using given method and key */
 PHP_FUNCTION(libressl_decrypt)
 {
-    zval *in, *out;
+    zval *in = NULL, *out = NULL;
     php_stream *in_stream, *out_stream;
     zend_long options = 0;
-    char *method, *password, *iv = "", *tag = NULL, *aad = "";
-    size_t method_len, password_len, iv_len = 0, tag_len = 0, aad_len = 0;
+    char *method = "", *password = "", *iv = "", *tag = NULL, *aad = "";
+    size_t method_len = 0, password_len = 0, iv_len = 0, tag_len = 0, aad_len = 0;
     const EVP_CIPHER *cipher_type;
     EVP_CIPHER_CTX *cipher_ctx;
     struct php_openssl_cipher_mode mode;
@@ -158,10 +165,16 @@ PHP_FUNCTION(libressl_decrypt)
     zend_string *outbuf = NULL;
     zend_bool free_iv = 0, free_password = 0;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS(), "rrss|lsss", &in, &out, &method, &method_len,
-                              &password, &password_len, &options, &iv, &iv_len, &tag, &tag_len, &aad, &aad_len) == FAILURE) {
-        return;
-    }
+    ZEND_PARSE_PARAMETERS_START(4, 8)
+            Z_PARAM_RESOURCE(in)
+            Z_PARAM_RESOURCE(out)
+            Z_PARAM_STRING(method, method_len)
+            Z_PARAM_STRING(password, password_len)
+            Z_PARAM_LONG(options)
+            Z_PARAM_STRING(iv, iv_len)
+            Z_PARAM_STRING(tag, tag_len)
+            Z_PARAM_STRING(aad, aad_len)
+    ZEND_PARSE_PARAMETERS_END();
 
     php_stream_from_zval(in_stream, in);
     php_stream_from_zval(out_stream, out);
