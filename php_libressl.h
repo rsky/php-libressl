@@ -22,6 +22,7 @@
 #define PHP_LIBRESSL_H
 
 #include <php.h>
+#include <tls.h>
 
 extern zend_module_entry libressl_module_entry;
 #define phpext_libressl_ptr &libressl_module_entry
@@ -43,6 +44,27 @@ ZEND_END_MODULE_GLOBALS(libressl)
    examples in any other php module directory.
 */
 #define LIBRESSL_G(v) ZEND_MODULE_GLOBALS_ACCESSOR(libressl, v)
+
+typedef struct _php_tls_obj php_tls_obj;
+typedef struct _php_tls_config_obj php_tls_config_obj;
+
+struct _php_tls_obj {
+    struct tls *ctx;
+    zend_object std;
+};
+
+struct _php_tls_config_obj {
+    struct tls_config *config;
+    zend_object std;
+};
+
+static inline php_tls_obj *php_tls_obj_from_obj(zend_object *obj) {
+    return (php_tls_obj *) ((uintptr_t) obj - XtOffsetOf(php_tls_obj, std));
+}
+
+static inline php_tls_config_obj *php_tls_config_obj_from_obj(zend_object *obj) {
+    return (php_tls_config_obj *) ((uintptr_t) obj - XtOffsetOf(php_tls_config_obj, std));
+}
 
 /* libtls functions */
 int php_libressl_tls_startup(INIT_FUNC_ARGS);
