@@ -62,8 +62,16 @@ static inline php_tls_obj *php_tls_obj_from_obj(zend_object *obj) {
     return (php_tls_obj *) ((uintptr_t) obj - XtOffsetOf(php_tls_obj, std));
 }
 
+static inline php_tls_obj *php_tls_obj_from_zval(zval *zv) {
+    return php_tls_obj_from_obj(Z_OBJ_P(zv));
+}
+
 static inline php_tls_config_obj *php_tls_config_obj_from_obj(zend_object *obj) {
     return (php_tls_config_obj *) ((uintptr_t) obj - XtOffsetOf(php_tls_config_obj, std));
+}
+
+static inline php_tls_config_obj *php_tls_config_obj_from_zval(zval *zv) {
+    return php_tls_config_obj_from_obj(Z_OBJ_P(zv));
 }
 
 /* libtls functions */

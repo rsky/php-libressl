@@ -36,7 +36,6 @@ static int le_libressl;
 
 /* {{{ Argument Information */
 
-
 ZEND_BEGIN_ARG_INFO_EX(arginfo_libressl_encrypt, 0, 0, 4)
         ZEND_ARG_INFO(0, in)
         ZEND_ARG_INFO(0, out)
@@ -59,7 +58,6 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_libressl_decrypt, 0, 0, 4)
         ZEND_ARG_INFO(0, tag)
         ZEND_ARG_INFO(0, aad)
 ZEND_END_ARG_INFO()
-
 
 /* }}} */
 
@@ -120,10 +118,10 @@ PHP_MINIT_FUNCTION(libressl)
 	/* If you have INI entries, uncomment these lines
 	REGISTER_INI_ENTRIES();
 	*/
-	if (php_libressl_tls_startup(INIT_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+	if (php_libressl_tls_startup(INIT_FUNC_ARGS_PASSTHRU) == FAILURE) {
 		return FAILURE;
 	}
-	if (php_libressl_crypto_startup(INIT_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+	if (php_libressl_crypto_startup(INIT_FUNC_ARGS_PASSTHRU) == FAILURE) {
 		return FAILURE;
 	}
 	return SUCCESS;
@@ -137,10 +135,10 @@ PHP_MSHUTDOWN_FUNCTION(libressl)
 	/* uncomment this line if you have INI entries
 	UNREGISTER_INI_ENTRIES();
 	*/
-	if (php_libressl_crypto_shutdown(SHUTDOWN_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+	if (php_libressl_crypto_shutdown(SHUTDOWN_FUNC_ARGS_PASSTHRU) == FAILURE) {
 		return FAILURE;
 	}
-	if (php_libressl_tls_shutdown(SHUTDOWN_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+	if (php_libressl_tls_shutdown(SHUTDOWN_FUNC_ARGS_PASSTHRU) == FAILURE) {
 		return FAILURE;
 	}
 	return SUCCESS;
@@ -155,10 +153,10 @@ PHP_RINIT_FUNCTION(libressl)
 #if defined(COMPILE_DL_LIBRESSL) && defined(ZTS)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
-	if (php_libressl_tls_activate(INIT_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+	if (php_libressl_tls_activate(INIT_FUNC_ARGS_PASSTHRU) == FAILURE) {
 		return FAILURE;
 	}
-	if (php_libressl_crypto_activate(INIT_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+	if (php_libressl_crypto_activate(INIT_FUNC_ARGS_PASSTHRU) == FAILURE) {
 		return FAILURE;
 	}
 	return SUCCESS;
@@ -170,10 +168,10 @@ PHP_RINIT_FUNCTION(libressl)
  */
 PHP_RSHUTDOWN_FUNCTION(libressl)
 {
-	if (php_libressl_crypto_deactivate(SHUTDOWN_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+	if (php_libressl_crypto_deactivate(SHUTDOWN_FUNC_ARGS_PASSTHRU) == FAILURE) {
 		return FAILURE;
 	}
-	if (php_libressl_tls_deactivate(SHUTDOWN_FUNC_ARGS_PASSTHRU) != SUCCESS) {
+	if (php_libressl_tls_deactivate(SHUTDOWN_FUNC_ARGS_PASSTHRU) == FAILURE) {
 		return FAILURE;
 	}
 	return SUCCESS;
@@ -202,7 +200,7 @@ const zend_function_entry libressl_functions[] = {
 	PHP_FE(confirm_libressl_compiled,	NULL)		/* For testing, remove later. */
 	PHP_FE(libressl_encrypt, arginfo_libressl_encrypt)
 	PHP_FE(libressl_decrypt, arginfo_libressl_decrypt)
-	PHP_FE_END	/* Must be the last line in libressl_functions[] */
+	PHP_FE_END
 };
 /* }}} */
 
