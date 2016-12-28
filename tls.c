@@ -180,7 +180,7 @@ int php_libressl_tls_startup(INIT_FUNC_ARGS)
     tls_config_object_handlers.clone_obj = NULL;
 
     INIT_NS_CLASS_ENTRY(ce_base, "Tls", "Tls", tls_base_methods);
-    ce_base.create_object = NULL;
+    ce_base.create_object = php_tls_object_create;
     ce_tls = zend_register_internal_class(&ce_base);
     ce_tls->ce_flags |= ZEND_ACC_EXPLICIT_ABSTRACT_CLASS;
 
@@ -276,7 +276,7 @@ static zend_object *php_tls_config_object_create(zend_class_entry *class_type) /
 
     zend_object_std_init(&intern->std, class_type);
     object_properties_init(&intern->std, class_type);
-    intern->std.handlers = &tls_object_handlers;
+    intern->std.handlers = &tls_config_object_handlers;
 
     intern->config = tls_config_new();
 
