@@ -23,6 +23,12 @@ static zend_object *php_tls_config_object_create(zend_class_entry *class_type);
 
 /* }}} */
 
+/* {{{ tls Method Prototypes */
+
+static PHP_METHOD(Tls, configure);
+
+/* }}} */
+
 /* {{{ tls_config Method Prototypes */
 
 static PHP_METHOD(TlsConfig, setCaFile);
@@ -72,6 +78,10 @@ static void php_tls_config_void_func(INTERNAL_FUNCTION_PARAMETERS, _tls_void_fun
 
 /* {{{ Argument Information */
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_configure, 0, 0, 0)
+{ "config", ZEND_NS_NAME("Tls", "Config"), IS_OBJECT, 0, 0, 0 },
+ZEND_END_ARG_INFO()
+
 #define TLS_CONFIG_SINGLE_TYPED_ARG_INFO(name, type) \
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_##name, 0, 0, 1) \
 ZEND_ARG_TYPE_INFO(0, name, type, 0) \
@@ -104,13 +114,13 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_none, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
-
 /* }}} */
 
 /* {{{ Function Tables */
 
 static zend_function_entry tls_base_methods[] = {
-       PHP_FE_END
+        PHP_ME(Tls, configure, arginfo_tls_configure, 0)
+        PHP_FE_END
 };
 
 static zend_function_entry tls_client_methods[] = {
@@ -122,30 +132,30 @@ static zend_function_entry tls_server_methods[] = {
 };
 
 static zend_function_entry tls_config_methods[] = {
-        PHP_ME(TlsConfig, setCaFile,            arginfo_tls_config_file, 0)
-        PHP_ME(TlsConfig, setCaPath,            arginfo_tls_config_path, 0)
-        PHP_ME(TlsConfig, setCa,                arginfo_tls_config_ca, 0)
-        PHP_ME(TlsConfig, setCertFile,          arginfo_tls_config_file, 0)
-        PHP_ME(TlsConfig, setCert,              arginfo_tls_config_cert, 0)
-        PHP_ME(TlsConfig, setCiphers,           arginfo_tls_config_ciphers, 0)
-        PHP_ME(TlsConfig, setDheParams,         arginfo_tls_config_params, 0)
-        PHP_ME(TlsConfig, setEcdheCurve,        arginfo_tls_config_name, 0)
-        PHP_ME(TlsConfig, setKeyFile,           arginfo_tls_config_file, 0)
-        PHP_ME(TlsConfig, setKey,               arginfo_tls_config_key, 0)
-        PHP_ME(TlsConfig, setKeypairFile,       arginfo_tls_config_keypair_file, 0)
-        PHP_ME(TlsConfig, setKeypair,           arginfo_tls_config_keypair, 0)
-        PHP_ME(TlsConfig, setProtocols,         arginfo_tls_config_protocols, 0)
-        PHP_ME(TlsConfig, setVerifyDepth,       arginfo_tls_config_verify_depth, 0)
-        PHP_ME(TlsConfig, preferCiphersClient,  arginfo_tls_config_none, 0)
-        PHP_ME(TlsConfig, preferCiphersServer,  arginfo_tls_config_none, 0)
-        PHP_ME(TlsConfig, insecureNoVerifyCert, arginfo_tls_config_none, 0)
-        PHP_ME(TlsConfig, insecureNoVerifyName, arginfo_tls_config_none, 0)
-        PHP_ME(TlsConfig, insecureNoVerifyTime, arginfo_tls_config_none, 0)
-        PHP_ME(TlsConfig, verify,               arginfo_tls_config_none, 0)
-        PHP_ME(TlsConfig, verifyClient,         arginfo_tls_config_none, 0)
-        PHP_ME(TlsConfig, verifyClientOptional, arginfo_tls_config_none, 0)
-        PHP_ME(TlsConfig, clearKeys,            arginfo_tls_config_none, 0)
-        PHP_ME(TlsConfig, parseProtocols,       arginfo_tls_config_protostr, ZEND_ACC_STATIC)
+        PHP_ME(TlsConfig, setCaFile,            arginfo_tls_config_file,    ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setCaPath,            arginfo_tls_config_path,    ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setCa,                arginfo_tls_config_ca,      ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setCertFile,          arginfo_tls_config_file,    ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setCert,              arginfo_tls_config_cert,    ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setCiphers,           arginfo_tls_config_ciphers, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setDheParams,         arginfo_tls_config_params,  ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setEcdheCurve,        arginfo_tls_config_name,    ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setKeyFile,           arginfo_tls_config_file,    ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setKey,               arginfo_tls_config_key,     ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setKeypairFile,       arginfo_tls_config_keypair_file, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setKeypair,           arginfo_tls_config_keypair,      ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setProtocols,         arginfo_tls_config_protocols,    ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, setVerifyDepth,       arginfo_tls_config_verify_depth, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, preferCiphersClient,  arginfo_tls_config_none, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, preferCiphersServer,  arginfo_tls_config_none, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, insecureNoVerifyCert, arginfo_tls_config_none, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, insecureNoVerifyName, arginfo_tls_config_none, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, insecureNoVerifyTime, arginfo_tls_config_none, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, verify,               arginfo_tls_config_none, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, verifyClient,         arginfo_tls_config_none, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, verifyClientOptional, arginfo_tls_config_none, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, clearKeys,            arginfo_tls_config_none, ZEND_ACC_PUBLIC)
+        PHP_ME(TlsConfig, parseProtocols,       arginfo_tls_config_protostr, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         PHP_FE_END
 };
 
@@ -271,6 +281,25 @@ static zend_object *php_tls_config_object_create(zend_class_entry *class_type) /
     intern->config = tls_config_new();
 
     return &intern->std;
+}
+/* }}} */
+
+/* {{{ proto void Tls\Tls::configure(Tls\Config config)
+ */
+static PHP_METHOD(Tls, configure)
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+
+    zval *_config = NULL;
+    struct tls_config *config;
+
+    ZEND_PARSE_PARAMETERS_START(0, 1)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_OBJECT_OF_CLASS(_config, ce_tls_config)
+    ZEND_PARSE_PARAMETERS_END();
+
+    config = (_config) ? php_tls_config_obj_from_zval(_config)->config : NULL;
+    tls_configure(intern->ctx, config);
 }
 /* }}} */
 
