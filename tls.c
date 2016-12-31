@@ -30,6 +30,11 @@ static PHP_METHOD(Tls, getError);
 
 static PHP_METHOD(Tls, configure);
 
+static PHP_METHOD(Tls, handshake);
+static PHP_METHOD(Tls, read);
+static PHP_METHOD(Tls, write);
+static PHP_METHOD(Tls, close);
+
 /* }}} */
 
 /* {{{ tls_config Method Prototypes */
@@ -96,6 +101,14 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_configure, 0, 0, 0)
 { "config", ZEND_NS_NAME("Tls", "Config"), IS_OBJECT, 0, 0, 0 },
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_read, 0, 0, 0)
+ZEND_ARG_TYPE_INFO(0, "length", IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_write, 0, 0, 1)
+ZEND_ARG_TYPE_INFO(0, "data", IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 #define TLS_CONFIG_SINGLE_TYPED_ARG_INFO(name, type) \
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_##name, 0, 0, 1) \
 ZEND_ARG_TYPE_INFO(0, name, type, 0) \
@@ -137,6 +150,10 @@ ZEND_END_ARG_INFO()
 static zend_function_entry tls_base_methods[] = {
         PHP_ME(Tls, getError,  arginfo_tls_none,      ZEND_ACC_PUBLIC)
         PHP_ME(Tls, configure, arginfo_tls_configure, ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, handshake, arginfo_tls_none,      ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, read,      arginfo_tls_read,      ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, write,     arginfo_tls_write,     ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, close,     arginfo_tls_none,      ZEND_ACC_PUBLIC)
         PHP_FE_END
 };
 
@@ -360,6 +377,78 @@ static PHP_METHOD(Tls, configure)
 
     config = (_config) ? php_tls_config_obj_from_zval(_config)->config : NULL;
     tls_configure(intern->ctx, config);
+}
+/* }}} */
+
+/* proto bool Tls\Tls::handshake() {{{
+ */
+static PHP_METHOD(Tls, handshake)
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+    if (zend_parse_parameters_none() == SUCCESS) {
+        RETURN_BOOL(tls_handshake(intern->ctx) == 0);
+    }
+}
+/* }}} */
+
+/* proto string Tls\Tls::read([int length]) {{{
+ */
+static PHP_METHOD(Tls, read)
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+    zend_long length = 1024;
+    char *buf;
+    ssize_t read_len;
+
+    ZEND_PARSE_PARAMETERS_START(0, 1)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_LONG(length)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (length <= 0) {
+        php_error_docref(NULL, E_WARNING, "Length parameter must be greater than 0");
+        RETURN_NULL();
+    }
+    buf = (char *) emalloc(length);
+    if (buf == NULL) {
+        RETURN_NULL();
+    }
+
+    read_len = tls_read(intern->ctx, buf, (size_t) length);
+    if (read_len >= 0) {
+        RETVAL_STRINGL(buf, read_len);
+    } else {
+        RETVAL_NULL();
+    }
+    efree(buf);
+}
+/* }}} */
+
+/* proto int Tls\Tls::write(string data) {{{
+ */
+static PHP_METHOD(Tls, write)
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+    zend_string *data = NULL;
+    ssize_t write_len;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_STR(data)
+    ZEND_PARSE_PARAMETERS_END();
+
+    write_len = tls_write(intern->ctx, ZSTR_VAL(data), ZSTR_LEN(data));
+    RETURN_LONG(write_len);
+}
+/* }}} */
+
+/* proto bool Tls\Tls::close() {{{
+ */
+static PHP_METHOD(Tls, close)
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+    if (zend_parse_parameters_none() == SUCCESS) {
+        RETURN_BOOL(tls_close(intern->ctx) == 0);
+    }
 }
 /* }}} */
 
