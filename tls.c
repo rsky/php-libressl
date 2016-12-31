@@ -69,6 +69,8 @@ static PHP_METHOD(TlsClient, connectSocket);
 static PHP_METHOD(TlsServer, acceptFds);
 static PHP_METHOD(TlsServer, acceptSocket);
 
+static PHP_METHOD(TlsServerConn, __construct);
+
 /* }}} */
 
 /* {{{ tls_config Method Prototypes */
@@ -243,6 +245,11 @@ static zend_function_entry tls_server_methods[] = {
         PHP_FE_END
 };
 
+static zend_function_entry tls_server_conn_methods[] = {
+        PHP_ME(TlsServerConn, __construct, NULL, ZEND_ACC_CTOR | ZEND_ACC_PRIVATE)
+        PHP_FE_END
+};
+
 static zend_function_entry tls_config_methods[] = {
         PHP_ME(TlsConfig, getError,             arginfo_tls_none, ZEND_ACC_PUBLIC)
         PHP_ME(TlsConfig, setCaFile,            arginfo_tls_config_file,    ZEND_ACC_PUBLIC)
@@ -324,7 +331,7 @@ int php_libressl_tls_startup(INIT_FUNC_ARGS)
     ce_server.create_object = php_tls_object_create;
     ce_tls_server = zend_register_internal_class_ex(&ce_server, ce_tls);
 
-    INIT_NS_CLASS_ENTRY(ce_server_conn, "Tls", "ServerConnection", NULL);
+    INIT_NS_CLASS_ENTRY(ce_server_conn, "Tls", "ServerConnection", tls_server_conn_methods);
     ce_server_conn.create_object = php_tls_object_create;
     ce_tls_server_conn = zend_register_internal_class_ex(&ce_server_conn, ce_tls);
     ce_tls_server_conn->ce_flags |= ZEND_ACC_FINAL;
@@ -801,6 +808,11 @@ static PHP_METHOD(TlsServer, acceptSocket)
     tls_accept_socket(intern->ctx, &conn, (int) sock);
     handle_server_conn(INTERNAL_FUNCTION_PARAM_PASSTHRU, conn);
 }
+/* }}} */
+
+/* proto Tls\ServerConnection::__construct() {{{
+ */
+static PHP_METHOD(TlsServerConn, __construct) {}
 /* }}} */
 
 static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_config_str_func_t func) /* {{{ */
