@@ -75,14 +75,14 @@ static PHP_METHOD(TlsConfig, verifyClientOptional);
 static PHP_METHOD(TlsConfig, clearKeys);
 static PHP_METHOD(TlsConfig, parseProtocols);
 
-typedef int(*_tls_str_func_t)(struct tls_config *, const char *);
-typedef int(*_tls_mem_func_t)(struct tls_config *, const uint8_t *, size_t);
-typedef void(*_tls_void_func_t)(struct tls_config *);
+typedef int(*_tls_config_str_func_t)(struct tls_config *, const char *);
+typedef int(*_tls_config_mem_func_t)(struct tls_config *, const uint8_t *, size_t);
+typedef void(*_tls_config_void_func_t)(struct tls_config *);
 
-static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_str_func_t func);
-static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_mem_func_t func);
-static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_str_func_t func);
-static void php_tls_config_void_func(INTERNAL_FUNCTION_PARAMETERS, _tls_void_func_t func);
+static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_config_str_func_t func);
+static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_config_mem_func_t func);
+static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_config_str_func_t func);
+static void php_tls_config_void_func(INTERNAL_FUNCTION_PARAMETERS, _tls_config_void_func_t func);
 
 /* }}} */
 
@@ -452,7 +452,7 @@ static PHP_METHOD(Tls, close)
 }
 /* }}} */
 
-static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_str_func_t func) /* {{{ */
+static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_config_str_func_t func) /* {{{ */
 {
     php_tls_config_obj *intern = php_tls_config_obj_from_zval(getThis());
 
@@ -466,7 +466,7 @@ static void php_tls_config_path_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_str_fu
 }
 /* }}} */
 
-static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_mem_func_t func) /* {{{ */
+static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_config_mem_func_t func) /* {{{ */
 {
     php_tls_config_obj *intern = php_tls_config_obj_from_zval(getThis());
 
@@ -480,7 +480,7 @@ static void php_tls_config_mem_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_mem_fun
 }
 /* }}} */
 
-static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_str_func_t func) /* {{{ */
+static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_config_str_func_t func) /* {{{ */
 {
     php_tls_config_obj *intern = php_tls_config_obj_from_zval(getThis());
 
@@ -494,7 +494,7 @@ static void php_tls_config_str_setter(INTERNAL_FUNCTION_PARAMETERS, _tls_str_fun
 }
 /* }}} */
 
-static void php_tls_config_void_func(INTERNAL_FUNCTION_PARAMETERS, _tls_void_func_t func) /* {{{ */
+static void php_tls_config_void_func(INTERNAL_FUNCTION_PARAMETERS, _tls_config_void_func_t func) /* {{{ */
 {
     if (zend_parse_parameters_none() == SUCCESS) {
         func(php_tls_config_obj_from_zval(getThis())->config);
