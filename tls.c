@@ -7,6 +7,7 @@ static zend_class_entry *ce_tls;
 static zend_class_entry *ce_tls_client;
 static zend_class_entry *ce_tls_server;
 static zend_class_entry *ce_tls_config;
+static zend_class_entry *ce_tls_util;
 
 static zend_object_handlers tls_object_handlers;
 static zend_object_handlers tls_config_object_handlers;
@@ -80,6 +81,12 @@ static void php_tls_config_void_func(INTERNAL_FUNCTION_PARAMETERS, _tls_void_fun
 
 /* }}} */
 
+/* {{{ tls Utility Method Prototypes */
+
+static PHP_METHOD(TlsUtil, loadFile);
+
+/* }}} */
+
 /* {{{ Argument Information */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_none, 0, 0, 0)
@@ -116,6 +123,11 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_keypair, 0, 0, 2)
 ZEND_ARG_TYPE_INFO(0, cert, IS_STRING, 0)
 ZEND_ARG_TYPE_INFO(0, ca,   IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_load_file, 0, 0, 1)
+ZEND_ARG_TYPE_INFO(0, file,     IS_STRING, 0)
+ZEND_ARG_TYPE_INFO(0, password, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
 /* }}} */
@@ -165,13 +177,18 @@ static zend_function_entry tls_config_methods[] = {
         PHP_FE_END
 };
 
+static zend_function_entry tls_util_methods[] = {
+        PHP_ME(TlsUtil, loadFile, arginfo_tls_load_file, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        PHP_FE_END
+};
+
 /* }}} */
 
 /* {{{ PHP Module Functions */
 
 int php_libressl_tls_startup(INIT_FUNC_ARGS)
 {
-    zend_class_entry ce_base, ce_client, ce_server, ce_config;
+    zend_class_entry ce_base, ce_client, ce_server, ce_config, ce_util;
 
     tls_init();
 
@@ -213,6 +230,9 @@ int php_libressl_tls_startup(INIT_FUNC_ARGS)
     INIT_NS_CLASS_ENTRY(ce_config, "Tls", "Config", tls_config_methods);
     ce_config.create_object = php_tls_config_object_create;
     ce_tls_config = zend_register_internal_class(&ce_config);
+
+    INIT_NS_CLASS_ENTRY(ce_util, "Tls", "Util", tls_util_methods);
+    ce_tls_util = zend_register_internal_class(&ce_util);
 
     return SUCCESS;
 }
@@ -471,7 +491,7 @@ static PHP_METHOD(TlsConfig, setKey)
 }
 /* }}} */
 
-/* {{{ proto bool Tls\Config::setKeypairFile(String cert_file, String key_file)
+/* {{{ proto bool Tls\Config::setKeypairFile(string cert_file, string key_file)
  */
 static PHP_METHOD(TlsConfig, setKeypairFile)
 {
@@ -638,6 +658,32 @@ static PHP_METHOD(TlsConfig, parseProtocols)
         RETURN_LONG(protocols);
     } else {
         RETURN_FALSE;
+    }
+}
+/* }}} */
+
+/* {{{ proto int Tls\Util::loadFile(string file)
+ */
+static PHP_METHOD(TlsUtil, loadFile)
+{
+    zend_string *file = NULL, *password_str = NULL;
+    char *password;
+    uint8_t *data;
+    size_t data_len;
+
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_PATH_STR(file)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_STR(password_str)
+    ZEND_PARSE_PARAMETERS_END();
+
+    password = (password_str) ? ZSTR_VAL(password_str) : NULL;
+    data = tls_load_file(ZSTR_VAL(file), &data_len, password);
+    if (data) {
+        RETURN_STRINGL((const char *) data, data_len);
+    } else {
+        php_error_docref(NULL, E_WARNING, "Unable to load file %s", ZSTR_VAL(file));
+        RETURN_NULL();
     }
 }
 /* }}} */
