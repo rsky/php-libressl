@@ -35,6 +35,24 @@ static PHP_METHOD(Tls, read);
 static PHP_METHOD(Tls, write);
 static PHP_METHOD(Tls, close);
 
+static PHP_METHOD(Tls, peerCertProvided);
+static PHP_METHOD(Tls, peerCertContainsName);
+
+static PHP_METHOD(Tls, peerCertHash);
+static PHP_METHOD(Tls, peerCertIssuer);
+static PHP_METHOD(Tls, peerCertSubject);
+static PHP_METHOD(Tls, peerCertNotBefore);
+static PHP_METHOD(Tls, peerCertNotAfter);
+
+static PHP_METHOD(Tls, connVersion);
+static PHP_METHOD(Tls, connCipher);
+
+typedef const char *(*_tls_str_func_t)(struct tls *);
+typedef time_t(*_tls_time_func_t)(struct tls *);
+
+static void php_tls_str_func(INTERNAL_FUNCTION_PARAMETERS, _tls_str_func_t func);
+static void php_tls_time_func(INTERNAL_FUNCTION_PARAMETERS, _tls_time_func_t func);
+
 /* }}} */
 
 /* {{{ tls_config Method Prototypes */
@@ -109,6 +127,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_write, 0, 0, 1)
 ZEND_ARG_TYPE_INFO(0, "data", IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_peer_cert_contains_name, 0, 0, 1)
+ZEND_ARG_TYPE_INFO(0, "name", IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 #define TLS_CONFIG_SINGLE_TYPED_ARG_INFO(name, type) \
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_##name, 0, 0, 1) \
 ZEND_ARG_TYPE_INFO(0, name, type, 0) \
@@ -154,6 +176,15 @@ static zend_function_entry tls_base_methods[] = {
         PHP_ME(Tls, read,      arginfo_tls_read,      ZEND_ACC_PUBLIC)
         PHP_ME(Tls, write,     arginfo_tls_write,     ZEND_ACC_PUBLIC)
         PHP_ME(Tls, close,     arginfo_tls_none,      ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, peerCertProvided,  arginfo_tls_none, ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, peerCertContainsName, arginfo_tls_peer_cert_contains_name, ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, peerCertHash,      arginfo_tls_none, ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, peerCertIssuer,    arginfo_tls_none, ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, peerCertSubject,   arginfo_tls_none, ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, peerCertNotBefore, arginfo_tls_none, ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, peerCertNotAfter,  arginfo_tls_none, ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, connVersion,       arginfo_tls_none, ZEND_ACC_PUBLIC)
+        PHP_ME(Tls, connCipher,        arginfo_tls_none, ZEND_ACC_PUBLIC)
         PHP_FE_END
 };
 
@@ -361,6 +392,30 @@ static PHP_METHOD(TlsConfig, getError)
 }
 /* }}} */
 
+static void php_tls_str_func(INTERNAL_FUNCTION_PARAMETERS, _tls_str_func_t func) /* {{{ */
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+    if (zend_parse_parameters_none() == SUCCESS) {
+        const char *str = func(intern->ctx);
+        if (str) {
+            RETURN_STRING(str);
+        } else {
+            RETURN_NULL();
+        }
+    }
+}
+/* }}} */
+
+static void php_tls_time_func(INTERNAL_FUNCTION_PARAMETERS, _tls_time_func_t func) /* {{{ */
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+    if (zend_parse_parameters_none() == SUCCESS) {
+        time_t time_val = func(intern->ctx);
+        RETURN_LONG(time_val);
+    }
+}
+/* }}} */
+
 /* {{{ proto void Tls\Tls::configure(Tls\Config config)
  */
 static PHP_METHOD(Tls, configure)
@@ -449,6 +504,88 @@ static PHP_METHOD(Tls, close)
     if (zend_parse_parameters_none() == SUCCESS) {
         RETURN_BOOL(tls_close(intern->ctx) == 0);
     }
+}
+/* }}} */
+
+/* proto bool Tls\Tls::peerCertProvided() {{{
+ */
+static PHP_METHOD(Tls, peerCertProvided)
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+    if (zend_parse_parameters_none() == SUCCESS) {
+        RETURN_BOOL(tls_peer_cert_provided(intern->ctx) == 0);
+    }
+}
+/* }}} */
+
+/* proto bool Tls\Tls::peerCertContainsName(string name) {{{
+ */
+static PHP_METHOD(Tls, peerCertContainsName)
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+    zend_string *name = NULL;
+
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_STR(name)
+    ZEND_PARSE_PARAMETERS_END();
+
+    RETURN_BOOL(tls_peer_cert_contains_name(intern->ctx, ZSTR_VAL(name)) == 0);
+}
+/* }}} */
+
+/* proto string Tls\Tls::peerCertHash() {{{
+ */
+static PHP_METHOD(Tls, peerCertHash)
+{
+    php_tls_str_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_peer_cert_hash);
+}
+/* }}} */
+
+/* proto string Tls\Tls::peerCertIssuer() {{{
+ */
+static PHP_METHOD(Tls, peerCertIssuer)
+{
+    php_tls_str_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_peer_cert_issuer);
+}
+/* }}} */
+
+/* proto string Tls\Tls::() {{{
+ */
+static PHP_METHOD(Tls, peerCertSubject)
+{
+    php_tls_str_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_peer_cert_subject);
+}
+/* }}} */
+
+/* proto long Tls\Tls::peerCertNotBefore() {{{
+ */
+static PHP_METHOD(Tls, peerCertNotBefore)
+{
+    php_tls_time_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_peer_cert_notbefore);
+}
+/* }}} */
+
+/* proto long Tls\Tls::peerCertNotAfter() {{{
+ */
+static PHP_METHOD(Tls, peerCertNotAfter)
+{
+    php_tls_time_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_peer_cert_notafter);
+}
+/* }}} */
+
+/* proto string Tls\Tls::connVersion() {{{
+ */
+static PHP_METHOD(Tls, connVersion)
+{
+    php_tls_str_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_conn_version);
+}
+/* }}} */
+
+/* proto string Tls\Tls::connCipher() {{{
+ */
+static PHP_METHOD(Tls, connCipher)
+{
+    php_tls_str_func(INTERNAL_FUNCTION_PARAM_PASSTHRU, tls_conn_cipher);
 }
 /* }}} */
 
