@@ -58,6 +58,10 @@ static void php_tls_time_func(INTERNAL_FUNCTION_PARAMETERS, _tls_time_func_t fun
 
 /* {{{ tls client Method Prototypes */
 
+static PHP_METHOD(TlsClient, connect);
+static PHP_METHOD(TlsClient, connectFds);
+static PHP_METHOD(TlsClient, connectSocket);
+
 /* }}} */
 
 /* {{{ tls server Method Prototypes */
@@ -152,6 +156,23 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_accept_socket, 0, 0, 1)
 ZEND_ARG_TYPE_INFO(0, "socket", IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_connect, 0, 0, 1)
+ZEND_ARG_TYPE_INFO(0, "host", IS_STRING, 0)
+ZEND_ARG_TYPE_INFO(0, "port", IS_STRING, 1)
+ZEND_ARG_TYPE_INFO(0, "servername", IS_STRING, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_connect_fds, 0, 0, 2)
+ZEND_ARG_TYPE_INFO(0, "fd_read", IS_LONG, 0)
+ZEND_ARG_TYPE_INFO(0, "fd_write", IS_LONG, 0)
+ZEND_ARG_TYPE_INFO(0, "servername", IS_STRING, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_connect_socket, 0, 0, 1)
+ZEND_ARG_TYPE_INFO(0, "socket", IS_LONG, 0)
+ZEND_ARG_TYPE_INFO(0, "servername", IS_STRING, 1)
+ZEND_END_ARG_INFO()
+
 #define TLS_CONFIG_SINGLE_TYPED_ARG_INFO(name, type) \
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_config_##name, 0, 0, 1) \
 ZEND_ARG_TYPE_INFO(0, name, type, 0) \
@@ -210,6 +231,9 @@ static zend_function_entry tls_base_methods[] = {
 };
 
 static zend_function_entry tls_client_methods[] = {
+        PHP_ME(TlsClient, connect,       arginfo_tls_connect,        ZEND_ACC_PUBLIC)
+        PHP_ME(TlsClient, connectFds,    arginfo_tls_connect_fds,    ZEND_ACC_PUBLIC)
+        PHP_ME(TlsClient, connectSocket, arginfo_tls_connect_socket, ZEND_ACC_PUBLIC)
         PHP_FE_END
 };
 
@@ -634,14 +658,100 @@ static void handle_server_conn(INTERNAL_FUNCTION_PARAMETERS, struct tls *conn) /
 }
 /* }}} */
 
+/* {{{ proto int Tls\Client::connect(string host[, string port[, string servername]])
+ */
+static PHP_METHOD(TlsClient, connect)
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+
+    zend_string *host_str = NULL, *port_str = NULL, *servername_str = NULL;
+    const char *host, *port, *servername;
+    int rv;
+
+    ZEND_PARSE_PARAMETERS_START(1, 3)
+            Z_PARAM_STR(host_str)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_STR_EX(port_str, 1, 0)
+            Z_PARAM_STR_EX(servername_str, 1, 0)
+    ZEND_PARSE_PARAMETERS_END();
+
+    host = ZSTR_VAL(host_str);
+    port = (port_str) ? ZSTR_VAL(port_str) : NULL;
+    servername = (servername_str) ? ZSTR_VAL(servername_str) : NULL;
+
+    rv = tls_connect_servername(intern->ctx, host, port, servername);
+    RETURN_LONG(rv);
+}
+/* }}} */
+
+/* {{{ proto int Tls\Client::connect(string host[, string port[, string servername]])
+ */
+static PHP_METHOD(TlsClient, connectFds)
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+
+    zend_long fd_read = 0, fd_write = 0;
+    zend_string *servername_str = NULL;
+    const char *servername;
+    int rv;
+
+    ZEND_PARSE_PARAMETERS_START(2, 3)
+            Z_PARAM_LONG(fd_read)
+            Z_PARAM_LONG(fd_write)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_STR_EX(servername_str, 1, 0)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (ZEND_LONG_INT_OVFL(fd_read) || fd_read < 0) {
+        php_error_docref(NULL, E_WARNING, "fd_read is out of range");
+        RETURN_NULL();
+    }
+    if (ZEND_LONG_INT_OVFL(fd_write) || fd_write < 0) {
+        php_error_docref(NULL, E_WARNING, "fd_write is out of range");
+        RETURN_NULL();
+    }
+
+    servername = (servername_str) ? ZSTR_VAL(servername_str) : NULL;
+    rv = tls_connect_fds(intern->ctx, (int) fd_read, (int) fd_write, servername);
+    RETURN_LONG(rv);
+}
+/* }}} */
+
+/* {{{ proto int Tls\Client::connect(string host[, string port[, string servername]])
+ */
+static PHP_METHOD(TlsClient, connectSocket)
+{
+    php_tls_obj *intern = php_tls_obj_from_zval(getThis());
+
+    zend_long sock = 0;
+    zend_string *servername_str = NULL;
+    const char *servername;
+    int rv;
+
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_LONG(sock)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_STR_EX(servername_str, 1, 0)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (ZEND_LONG_INT_OVFL(sock) || sock < 0) {
+        php_error_docref(NULL, E_WARNING, "socket is out of range");
+        RETURN_NULL();
+    }
+
+    servername = (servername_str) ? ZSTR_VAL(servername_str) : NULL;
+    rv = tls_connect_socket(intern->ctx, (int) sock, servername);
+    RETURN_LONG(rv);
+}
+/* }}} */
+
 /* proto Tls\ServerConnection Tls\Server::acceptFds(int fd_read, int fd_write)
  */
 static PHP_METHOD(TlsServer, acceptFds)
 {
     php_tls_obj *intern = php_tls_obj_from_zval(getThis());
 
-    zend_long fd_read = 0;
-    zend_long fd_write = 0;
+    zend_long fd_read = 0, fd_write = 0;
 
     struct tls *conn;
 
@@ -670,20 +780,20 @@ static PHP_METHOD(TlsServer, acceptSocket)
 {
     php_tls_obj *intern = php_tls_obj_from_zval(getThis());
 
-    zend_long socket = 0;
+    zend_long sock = 0;
 
     struct tls *conn;
 
     ZEND_PARSE_PARAMETERS_START(1, 1)
-            Z_PARAM_LONG(socket)
+            Z_PARAM_LONG(sock)
     ZEND_PARSE_PARAMETERS_END();
 
-    if (ZEND_LONG_INT_OVFL(socket) || socket < 0) {
+    if (ZEND_LONG_INT_OVFL(sock) || sock < 0) {
         php_error_docref(NULL, E_WARNING, "socket is out of range");
         RETURN_NULL();
     }
 
-    tls_accept_socket(intern->ctx, &conn, (int) socket);
+    tls_accept_socket(intern->ctx, &conn, (int) sock);
     handle_server_conn(INTERNAL_FUNCTION_PARAM_PASSTHRU, conn);
 }
 /* }}} */
