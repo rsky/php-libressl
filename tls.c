@@ -327,6 +327,7 @@ int php_libressl_tls_startup(INIT_FUNC_ARGS)
     INIT_NS_CLASS_ENTRY(ce_server_conn, "Tls", "ServerConnection", NULL);
     ce_server_conn.create_object = php_tls_object_create;
     ce_tls_server_conn = zend_register_internal_class_ex(&ce_server_conn, ce_tls);
+    ce_tls_server_conn->ce_flags |= ZEND_ACC_FINAL;
 
     INIT_NS_CLASS_ENTRY(ce_config, "Tls", "Config", tls_config_methods);
     ce_config.create_object = php_tls_config_object_create;
@@ -377,6 +378,7 @@ static void php_tls_config_object_free_storage(zend_object *object) /* {{{ */
 
 static zend_object *php_tls_object_create(zend_class_entry *class_type) /* {{{ */
 {
+    zend_class_entry *ce = class_type;
     php_tls_obj *intern;
 
     intern = ecalloc(1, sizeof(php_tls_obj) + zend_object_properties_size(class_type));
@@ -385,12 +387,15 @@ static zend_object *php_tls_object_create(zend_class_entry *class_type) /* {{{ *
     object_properties_init(&intern->std, class_type);
     intern->std.handlers = &tls_object_handlers;
 
-    if ((uintptr_t) class_type == (uintptr_t) ce_tls_server) {
-        intern->ctx = tls_server();
-    } else if ((uintptr_t) class_type == (uintptr_t) ce_tls_client) {
-        intern->ctx = tls_client();
-    } else {
-        intern->ctx = NULL;
+    while (ce != NULL) {
+        if ((uintptr_t) ce == (uintptr_t) ce_tls_server) {
+            intern->ctx = tls_server();
+            break;
+        } else if ((uintptr_t) ce == (uintptr_t) ce_tls_client) {
+            intern->ctx = tls_client();
+            break;
+        }
+        ce = ce->parent;
     }
 
     return &intern->std;
