@@ -190,7 +190,9 @@ int php_libressl_tls_startup(INIT_FUNC_ARGS)
 {
     zend_class_entry ce_base, ce_client, ce_server, ce_config, ce_util;
 
-    tls_init();
+    if (tls_init() != 0) {
+        return FAILURE;
+    }
 
     memcpy(&tls_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
     tls_object_handlers.offset = (int) XtOffsetOf(php_tls_obj, std);
