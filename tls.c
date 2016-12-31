@@ -128,6 +128,13 @@ static PHP_METHOD(TlsUtil, loadFile);
 
 /* }}} */
 
+/* {{{ Internal Function Prototypes */
+
+static int php_libressl_fd_from_zval(zval *pzval, const char *name);
+static int php_libressl_socketd_from_zval(zval *pzval, const char *name);
+
+/* }}} */
+
 /* {{{ Argument Information */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_none, 0, 0, 0)
@@ -150,12 +157,12 @@ ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_accept_fds, 0, 0, 2)
-ZEND_ARG_TYPE_INFO(0, fd_read, IS_LONG, 0)
-ZEND_ARG_TYPE_INFO(0, fd_write, IS_LONG, 0)
+ZEND_ARG_INFO(0, fd_read)
+ZEND_ARG_INFO(0, fd_write)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_accept_socket, 0, 0, 1)
-ZEND_ARG_TYPE_INFO(0, socket, IS_LONG, 0)
+ZEND_ARG_INFO(0, socket)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_connect, 0, 0, 1)
@@ -165,13 +172,13 @@ ZEND_ARG_TYPE_INFO(0, servername, IS_STRING, 1)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_connect_fds, 0, 0, 2)
-ZEND_ARG_TYPE_INFO(0, fd_read, IS_LONG, 0)
-ZEND_ARG_TYPE_INFO(0, fd_write, IS_LONG, 0)
+ZEND_ARG_INFO(0, fd_read)
+ZEND_ARG_INFO(0, fd_write)
 ZEND_ARG_TYPE_INFO(0, servername, IS_STRING, 1)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_connect_socket, 0, 0, 1)
-ZEND_ARG_TYPE_INFO(0, socket, IS_LONG, 0)
+ZEND_ARG_INFO(0, socket)
 ZEND_ARG_TYPE_INFO(0, servername, IS_STRING, 1)
 ZEND_END_ARG_INFO()
 
@@ -678,6 +685,7 @@ static PHP_METHOD(TlsClient, connect)
 
     zend_string *host_str = NULL, *port_str = NULL, *servername_str = NULL;
     const char *host, *port, *servername;
+
     int rv;
 
     ZEND_PARSE_PARAMETERS_START(1, 3)
@@ -696,116 +704,112 @@ static PHP_METHOD(TlsClient, connect)
 }
 /* }}} */
 
-/* {{{ proto int Tls\Client::connectFds(int fd_read, int fd_write[, string servername])
+/* {{{ proto int Tls\Client::connectFds(mixed fd_read, mixed fd_write[, string servername])
  */
 static PHP_METHOD(TlsClient, connectFds)
 {
     php_tls_obj *intern = php_tls_obj_from_zval(getThis());
 
-    zend_long fd_read = 0, fd_write = 0;
+    zval *z_read = NULL, *z_write = NULL;
+    int fd_read, fd_write;
     zend_string *servername_str = NULL;
     const char *servername;
+
     int rv;
 
     ZEND_PARSE_PARAMETERS_START(2, 3)
-            Z_PARAM_LONG(fd_read)
-            Z_PARAM_LONG(fd_write)
+            Z_PARAM_ZVAL(z_read)
+            Z_PARAM_ZVAL(z_write)
             Z_PARAM_OPTIONAL
             Z_PARAM_STR_EX(servername_str, 1, 0)
     ZEND_PARSE_PARAMETERS_END();
 
-    if (ZEND_LONG_INT_OVFL(fd_read) || fd_read < 0) {
-        php_error_docref(NULL, E_WARNING, "fd_read is out of range");
-        RETURN_NULL();
-    }
-    if (ZEND_LONG_INT_OVFL(fd_write) || fd_write < 0) {
-        php_error_docref(NULL, E_WARNING, "fd_write is out of range");
+    if ((fd_read = php_libressl_fd_from_zval(z_read, "fd_read")) == -1 ||
+        (fd_write = php_libressl_fd_from_zval(z_write, "fd_write")) == -1) {
         RETURN_NULL();
     }
 
     servername = (servername_str) ? ZSTR_VAL(servername_str) : NULL;
-    rv = tls_connect_fds(intern->ctx, (int) fd_read, (int) fd_write, servername);
+    rv = tls_connect_fds(intern->ctx, fd_read, fd_write, servername);
     RETURN_LONG(rv);
 }
 /* }}} */
 
-/* {{{ proto int Tls\Client::connectSocket(int socket[, string servername])
+/* {{{ proto int Tls\Client::connectSocket(mixed socket[, string servername])
  */
 static PHP_METHOD(TlsClient, connectSocket)
 {
     php_tls_obj *intern = php_tls_obj_from_zval(getThis());
 
-    zend_long sock = 0;
+    zval *z_socketd = NULL;
+    int socketd;
     zend_string *servername_str = NULL;
     const char *servername;
+
     int rv;
 
     ZEND_PARSE_PARAMETERS_START(1, 2)
-            Z_PARAM_LONG(sock)
+            Z_PARAM_ZVAL(z_socketd)
             Z_PARAM_OPTIONAL
             Z_PARAM_STR_EX(servername_str, 1, 0)
     ZEND_PARSE_PARAMETERS_END();
 
-    if (ZEND_LONG_INT_OVFL(sock) || sock < 0) {
-        php_error_docref(NULL, E_WARNING, "socket is out of range");
+    if ((socketd = php_libressl_socketd_from_zval(z_socketd, "socket")) == -1) {
         RETURN_NULL();
     }
 
     servername = (servername_str) ? ZSTR_VAL(servername_str) : NULL;
-    rv = tls_connect_socket(intern->ctx, (int) sock, servername);
+    rv = tls_connect_socket(intern->ctx, socketd, servername);
     RETURN_LONG(rv);
 }
 /* }}} */
 
-/* proto Tls\ServerConnection Tls\Server::acceptFds(int fd_read, int fd_write) {{{
+/* proto Tls\ServerConnection Tls\Server::acceptFds(mixed fd_read, mixed fd_write) {{{
  */
 static PHP_METHOD(TlsServer, acceptFds)
 {
     php_tls_obj *intern = php_tls_obj_from_zval(getThis());
 
-    zend_long fd_read = 0, fd_write = 0;
+    zval *z_read = NULL, *z_write = NULL;
+    int fd_read, fd_write;
 
     struct tls *conn;
 
     ZEND_PARSE_PARAMETERS_START(2, 2)
-            Z_PARAM_LONG(fd_read)
-            Z_PARAM_LONG(fd_write)
+            Z_PARAM_ZVAL(z_read)
+            Z_PARAM_ZVAL(z_write)
     ZEND_PARSE_PARAMETERS_END();
 
-    if (ZEND_LONG_INT_OVFL(fd_read) || fd_read < 0) {
-        php_error_docref(NULL, E_WARNING, "fd_read is out of range");
-        RETURN_NULL();
-    }
-    if (ZEND_LONG_INT_OVFL(fd_write) || fd_write < 0) {
-        php_error_docref(NULL, E_WARNING, "fd_write is out of range");
+    if ((fd_read = php_libressl_fd_from_zval(z_read, "fd_read")) == -1 ||
+        (fd_write = php_libressl_fd_from_zval(z_write, "fd_write")) == -1) {
         RETURN_NULL();
     }
 
-    tls_accept_fds(intern->ctx, &conn, (int) fd_read, (int) fd_write);
+    tls_accept_fds(intern->ctx, &conn, fd_read, fd_write);
     handle_server_conn(INTERNAL_FUNCTION_PARAM_PASSTHRU, conn);
 }
 /* }}} */
 
-/* proto Tls\ServerConnection Tls\Server::acceptSocket(int socket) {{{
+/* proto Tls\ServerConnection Tls\Server::acceptSocket(mixed socket) {{{
  */
 static PHP_METHOD(TlsServer, acceptSocket)
 {
     php_tls_obj *intern = php_tls_obj_from_zval(getThis());
 
-    zend_long sock = 0;
+    zval *z_socketd = NULL;
+    int socketd;
 
     struct tls *conn;
 
     ZEND_PARSE_PARAMETERS_START(1, 1)
-            Z_PARAM_LONG(sock)
+            Z_PARAM_ZVAL(z_socketd)
     ZEND_PARSE_PARAMETERS_END();
 
-    if (ZEND_LONG_INT_OVFL(sock) || sock < 0) {
-        php_error_docref(NULL, E_WARNING, "socket is out of range");
+    if ((socketd = php_libressl_socketd_from_zval(z_socketd, "socket")) == -1) {
         RETURN_NULL();
     }
 
-    tls_accept_socket(intern->ctx, &conn, (int) sock);
+    tls_accept_socket(intern->ctx, &conn, socketd);
     handle_server_conn(INTERNAL_FUNCTION_PARAM_PASSTHRU, conn);
 }
 /* }}} */
@@ -1138,6 +1142,86 @@ static PHP_METHOD(TlsUtil, loadFile)
     } else {
         php_error_docref(NULL, E_WARNING, "Unable to load file %s", ZSTR_VAL(file));
         RETURN_NULL();
+    }
+}
+/* }}} */
+
+static int php_libressl_fd_from_zval(zval *pzval, const char *name) /* {{{ */
+{
+    if (pzval == NULL) {
+        return -1;
+    } else if (Z_TYPE_P(pzval) == IS_RESOURCE) {
+        php_stream *stream;
+        int fd;
+        php_stream_from_zval_no_verify(stream, pzval);
+        if (stream == NULL) {
+            php_error_docref(NULL, E_WARNING, "%s resource is not a stream", name);
+            return -1;
+        }
+        if (php_stream_cast(stream, PHP_STREAM_AS_FD, (void **) &fd, 0) == SUCCESS) {
+            return fd;
+        } else {
+            php_error_docref(NULL, E_WARNING, "Unable to cast %s stream as a file descriptor", name);
+            return -1;
+        }
+    } else {
+        long fd;
+        if (Z_TYPE_P(pzval) == IS_LONG) {
+            fd = Z_LVAL_P(pzval);
+        } else {
+            zval zv;
+            ZVAL_COPY_VALUE(&zv, pzval);
+            zval_copy_ctor(&zv);
+            convert_to_long(&zv);
+            fd = Z_LVAL(zv);
+        }
+        if (ZEND_LONG_INT_OVFL(fd)) {
+            php_error_docref(NULL, E_WARNING, "%s is too long", name);
+            return -1;
+        }
+        return (int) fd;
+    }
+}
+/* }}} */
+
+static int php_libressl_socketd_from_zval(zval *pzval, const char *name) /* {{{ */
+{
+    if (pzval == NULL) {
+        return -1;
+    } else if (Z_TYPE_P(pzval) == IS_RESOURCE) {
+        php_stream *stream;
+        int socketd;
+        php_stream_from_zval_no_verify(stream, pzval);
+        if (stream == NULL) {
+            php_error_docref(NULL, E_WARNING, "%s resource is not a stream", name);
+            return -1;
+        }
+        if (php_stream_cast(stream, PHP_STREAM_AS_SOCKETD, (void **) &socketd, 0) == SUCCESS) {
+            return socketd;
+        } else {
+            php_error_docref(NULL, E_WARNING, "Unable to cast %s stream as a socket descriptor", name);
+            return -1;
+        }
+    } else {
+        long socketd;
+        if (Z_TYPE_P(pzval) == IS_LONG) {
+            socketd = Z_LVAL_P(pzval);
+        } else {
+            zval zv;
+            ZVAL_COPY_VALUE(&zv, pzval);
+            zval_copy_ctor(&zv);
+            convert_to_long(&zv);
+            socketd = Z_LVAL(zv);
+        }
+        if (ZEND_LONG_INT_OVFL(socketd)) {
+            php_error_docref(NULL, E_WARNING, "%s is too long", name);
+            return -1;
+        }
+        if (!ZEND_VALID_SOCKET(socketd)) {
+            php_error_docref(NULL, E_WARNING, "%s is not a valid socket descriptor", name);
+            return -1;
+        }
+        return (int) socketd;
     }
 }
 /* }}} */
