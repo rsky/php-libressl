@@ -989,7 +989,7 @@ static PHP_METHOD(TlsConfig, parseProtocols)
 }
 /* }}} */
 
-/* {{{ proto int Tls\Util::loadFile(string file)
+/* {{{ proto string Tls\Util::loadFile(string file[, string password])
  */
 static PHP_METHOD(TlsUtil, loadFile)
 {
