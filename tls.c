@@ -684,7 +684,7 @@ static PHP_METHOD(TlsClient, connect)
 }
 /* }}} */
 
-/* {{{ proto int Tls\Client::connect(string host[, string port[, string servername]])
+/* {{{ proto int Tls\Client::connectFds(int fd_read, int fd_write[, string servername])
  */
 static PHP_METHOD(TlsClient, connectFds)
 {
@@ -717,7 +717,7 @@ static PHP_METHOD(TlsClient, connectFds)
 }
 /* }}} */
 
-/* {{{ proto int Tls\Client::connect(string host[, string port[, string servername]])
+/* {{{ proto int Tls\Client::connectSocket(int socket[, string servername])
  */
 static PHP_METHOD(TlsClient, connectSocket)
 {
@@ -745,7 +745,7 @@ static PHP_METHOD(TlsClient, connectSocket)
 }
 /* }}} */
 
-/* proto Tls\ServerConnection Tls\Server::acceptFds(int fd_read, int fd_write)
+/* proto Tls\ServerConnection Tls\Server::acceptFds(int fd_read, int fd_write) {{{
  */
 static PHP_METHOD(TlsServer, acceptFds)
 {
@@ -774,7 +774,7 @@ static PHP_METHOD(TlsServer, acceptFds)
 }
 /* }}} */
 
-/* proto Tls\ServerConnection Tls\Server::acceptSocket(int socket)
+/* proto Tls\ServerConnection Tls\Server::acceptSocket(int socket) {{{
  */
 static PHP_METHOD(TlsServer, acceptSocket)
 {
