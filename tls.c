@@ -136,41 +136,41 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_configure, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_read, 0, 0, 0)
-ZEND_ARG_TYPE_INFO(0, "length", IS_LONG, 0)
+ZEND_ARG_TYPE_INFO(0, length, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_write, 0, 0, 1)
-ZEND_ARG_TYPE_INFO(0, "data", IS_STRING, 0)
+ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_peer_cert_contains_name, 0, 0, 1)
-ZEND_ARG_TYPE_INFO(0, "name", IS_STRING, 0)
+ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_accept_fds, 0, 0, 2)
-ZEND_ARG_TYPE_INFO(0, "fd_read", IS_LONG, 0)
-ZEND_ARG_TYPE_INFO(0, "fd_write", IS_LONG, 0)
+ZEND_ARG_TYPE_INFO(0, fd_read, IS_LONG, 0)
+ZEND_ARG_TYPE_INFO(0, fd_write, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_accept_socket, 0, 0, 1)
-ZEND_ARG_TYPE_INFO(0, "socket", IS_LONG, 0)
+ZEND_ARG_TYPE_INFO(0, socket, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_connect, 0, 0, 1)
-ZEND_ARG_TYPE_INFO(0, "host", IS_STRING, 0)
-ZEND_ARG_TYPE_INFO(0, "port", IS_STRING, 1)
-ZEND_ARG_TYPE_INFO(0, "servername", IS_STRING, 1)
+ZEND_ARG_TYPE_INFO(0, host, IS_STRING, 0)
+ZEND_ARG_TYPE_INFO(0, port, IS_STRING, 1)
+ZEND_ARG_TYPE_INFO(0, servername, IS_STRING, 1)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_connect_fds, 0, 0, 2)
-ZEND_ARG_TYPE_INFO(0, "fd_read", IS_LONG, 0)
-ZEND_ARG_TYPE_INFO(0, "fd_write", IS_LONG, 0)
-ZEND_ARG_TYPE_INFO(0, "servername", IS_STRING, 1)
+ZEND_ARG_TYPE_INFO(0, fd_read, IS_LONG, 0)
+ZEND_ARG_TYPE_INFO(0, fd_write, IS_LONG, 0)
+ZEND_ARG_TYPE_INFO(0, servername, IS_STRING, 1)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_connect_socket, 0, 0, 1)
-ZEND_ARG_TYPE_INFO(0, "socket", IS_LONG, 0)
-ZEND_ARG_TYPE_INFO(0, "servername", IS_STRING, 1)
+ZEND_ARG_TYPE_INFO(0, socket, IS_LONG, 0)
+ZEND_ARG_TYPE_INFO(0, servername, IS_STRING, 1)
 ZEND_END_ARG_INFO()
 
 #define TLS_CONFIG_SINGLE_TYPED_ARG_INFO(name, type) \
@@ -204,7 +204,7 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_tls_load_file, 0, 0, 1)
 ZEND_ARG_TYPE_INFO(0, file,     IS_STRING, 0)
-ZEND_ARG_TYPE_INFO(0, password, IS_STRING, 0)
+ZEND_ARG_TYPE_INFO(0, password, IS_STRING, 1)
 ZEND_END_ARG_INFO()
 
 /* }}} */
@@ -1111,7 +1111,7 @@ static PHP_METHOD(TlsUtil, loadFile)
     ZEND_PARSE_PARAMETERS_START(1, 2)
             Z_PARAM_PATH_STR(file)
             Z_PARAM_OPTIONAL
-            Z_PARAM_STR(password_str)
+            Z_PARAM_STR_EX(password_str, 1, 0)
     ZEND_PARSE_PARAMETERS_END();
 
     password = (password_str) ? ZSTR_VAL(password_str) : NULL;
